@@ -4,7 +4,7 @@ metadata:
   name: logcli-drain3
   namespace: drain3
 spec:
-  schedule: "*/5 * * * *"  # Run every 15 minutes
+  schedule: "*/2 * * * *"  # Run every 2 minutes
   jobTemplate:
     spec:
       template:

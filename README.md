@@ -307,9 +307,7 @@ kubectl port-forward svc/loki-grafana 3000:80 -n monitoring
 ```
 Open the Grafana web UI by visiting http://localhost:3000 
 
-Then go to Connections > Data sources, select Loki and go to Explore and you have to select namsepace called deeplog to view anomalies.
-
-
-
-
-
+Then go to Connections > Data sources, select Loki and go to Explore and you have to select namespace called deeplog. You can enter the following command to view anomalies
+```bash
+{namespace="deeplog"} |= `Sequence` | json | line_format `{{.log}}`
+```
