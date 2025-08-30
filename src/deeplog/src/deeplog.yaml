@@ -25,7 +25,7 @@ spec:
         - name: REDIS_HOST
           value: "redis.drain3.svc.cluster.local"
         - name: k_top
-          value: "6"
+          value: "7"
         command: ["python"]                # override CMD
         args: ["deeplog_train.py"]    # script to run
 
