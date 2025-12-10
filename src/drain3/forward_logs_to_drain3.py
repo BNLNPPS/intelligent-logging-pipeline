@@ -13,7 +13,7 @@ logging.basicConfig(level=logging.INFO, format='%(message)s')
 logger = logging.getLogger(__name__)
 
 # Configuration from environment variables
-DRAIN3_PERSISTENCE_FILE = "./drain3_state.bin"
+DRAIN3_PERSISTENCE_FILE = "/var/drain3/drain3_state.bin"
 DRAIN3_CONFIG_FILE = "./drain3.ini"  # or /app/drain3.ini in Docker
 
 # Regex to remove timestamps from beginning of log lines
@@ -50,9 +50,22 @@ def process_with_drain3(log_lines):
 
     batch = []
     batch_size = 20
+    for log_entry in log_lines:
+        try:
+            obj = json.loads(log_entry)
+            raw = obj.get("line", "")
+            
+            try:
+                inner = json.loads(raw)
+                raw_log_line = inner.get("log", raw)
+            except:
+                raw_log_line = raw
 
-    for log_line in log_lines:
-        cleaned_log_line = preprocess_log_line(log_line)
+        except:
+            raw_log_line = log_entry
+
+        cleaned_log_line = preprocess_log_line(raw_log_line)
+        
         if not cleaned_log_line:
             logger.warning(f"Skipping empty log line after preprocessing: {log_line}")
             continue
