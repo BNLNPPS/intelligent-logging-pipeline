@@ -43,33 +43,24 @@ class DeepLog(Module):
     ########################################################################
 
     def forward(self, X):
-        """Forward sample through DeepLog.
+        """
+        Forward pass for DeepLog.
+        Clips event IDs to avoid one-hot errors.
+        """
+        # Clip event IDs to valid range
+        X = torch.clamp(X, min=0, max=self.input_size - 1).to(torch.int64)
 
-            Parameters
-            ----------
-            X : tensor
-                Input to forward through DeepLog network.
+        # One-hot encode
+        X = F.one_hot(X, num_classes=self.input_size).to(torch.float)
 
-            Returns
-            -------
-            result : tensor
-
-            """
-        # One hot encode X
-        X = F.one_hot(X.to(torch.int64), self.input_size).to(torch.float)
-
-        # Set initial hidden states
+        # Initialize hidden states
         hidden = self._get_initial_state(X)
         state  = self._get_initial_state(X)
 
-        # Perform LSTM layer
+        # LSTM forward
         out, hidden = self.lstm(X, (hidden, state))
-        # Perform output layer
         out = self.out(out[:, -1, :])
-        # Create probability
         out = self.softmax(out)
-
-        # Return result
         return out
 
 

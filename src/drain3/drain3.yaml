@@ -12,6 +12,7 @@ spec:
           containers:
           - name: logcli-drain3
             image: osamaahmed17/drain3-forwarder
+            imagePullPolicy: Always   
             volumeMounts:
             - name: drain3-persistence
               mountPath: /var/drain3

@@ -1,20 +1,3 @@
-# FROM python:3.10-alpine
-
-# RUN apk update && apk add --no-cache jq
-# RUN pip install drain3 redis
-
-# WORKDIR /app
-
-# COPY forward_logs_to_drain3.py /app/
-# COPY redis_store.py /app/
-# COPY drain3.ini /app/
-
-# RUN addgroup -S appgroup && adduser -S appuser -G appgroup
-# RUN mkdir -p /var/drain3 && chown -R appuser:appgroup /app /var/drain3
-# USER appuser
-
-# CMD ["python3", "forward_logs_to_drain3.py"]
-
 FROM python:3.10-alpine
 
 # Install jq and dependencies
@@ -38,7 +21,6 @@ WORKDIR /app
 COPY forward_logs_to_drain3.py /app/
 COPY redis_store.py /app/
 COPY drain3.ini /app/
-COPY drain3_state.bin /app/
 
 # Create non-root user and set permissions
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup && \
