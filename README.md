@@ -1,7 +1,7 @@
 
 # Intelligent Logging Pipeline
 
-We designed a simple yet efficient logging solution to simplify log processing and predict anomalies. 
+We designed a simple and efficient logging solution to simplify log processing and predict anomalies. 
 
 ## Current Implementation Overview
 - Fluent Bit collects logs.
