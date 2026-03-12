@@ -20,8 +20,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the application code
 COPY . .
 
+RUN chmod 777 /app
+
 # Expose Prometheus metrics port
 EXPOSE 8000
 
 # Command to run the application
-CMD ["python","-m", "deeplog_train.py"]
+CMD ["python", "deeplog_train.py"]
