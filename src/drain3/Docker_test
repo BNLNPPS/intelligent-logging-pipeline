@@ -1,0 +1,11 @@
+# Use a minimal Alpine image
+FROM alpine:3.18
+
+# Install curl and jq at build time (runs as root here, but image will run as non-root later)
+RUN apk add --no-cache curl jq
+
+# Switch to non-root user allowed by SCC
+USER 1000
+
+# Keep pod alive
+CMD ["sleep", "infinity"]

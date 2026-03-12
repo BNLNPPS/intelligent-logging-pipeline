@@ -33,7 +33,7 @@ data_file = os.path.join(BASE_DIR, "redis_sequences.txt")
 anomaly_results_file = os.path.join(BASE_DIR, "anomaly_results.txt")
 
 # Redis Configuration (Use Env Vars for flexibility)
-REDIS_HOST = os.getenv("REDIS_HOST", "redis.drain3.svc.cluster.local")
+REDIS_HOST = os.getenv("REDIS_HOST", "redis.experiment-sphenix.svc.cluster.local")
 REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
 
 # Initialize model and preprocessor

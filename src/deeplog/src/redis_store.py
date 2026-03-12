@@ -3,7 +3,7 @@
 import redis
 import json
 
-r = redis.Redis(host='redis.drain3.svc.cluster.local', port=6379, decode_responses=True)
+r = redis.Redis(host='redis.experiment-sphenix.svc.cluster.local', port=6379, decode_responses=True)
 
 def push_sequence(cluster_ids):
     """Push a list of cluster IDs to Redis."""

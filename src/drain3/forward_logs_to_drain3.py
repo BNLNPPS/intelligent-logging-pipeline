@@ -2,93 +2,85 @@ import subprocess
 import json
 import re
 import logging
-import os
 from drain3 import TemplateMiner
 from drain3.template_miner_config import TemplateMinerConfig
 from drain3.file_persistence import FilePersistence
 from redis_store import push_sequence
 
-# Configure logging
 logging.basicConfig(level=logging.INFO, format='%(message)s')
 logger = logging.getLogger(__name__)
 
-# Configuration from environment variables
 DRAIN3_PERSISTENCE_FILE = "/var/drain3/drain3_state.bin"
-DRAIN3_CONFIG_FILE = "./drain3.ini"  # or /app/drain3.ini in Docker
+DRAIN3_CONFIG_FILE = "./drain3.ini"
 
-# Regex to remove timestamps from beginning of log lines
-TIMESTAMP_REGEX = r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z\s+'
+TIMESTAMP_REGEX = r'\[\d{2}/\w+/\d{4}:\d{2}:\d{2}:\d{2} \+\d{4}\]\s*'
 
 def query_loki():
-    """Query logs from Loki using logcli and jq."""
-
+    """Query logs from Loki using logcli, returning raw log lines."""
     cmd = (
-    'logcli --addr="http://loki.monitoring.svc.cluster.local:3100" query \'{namespace="npps"}\' '
-    '--limit=20 --output jsonl | jq -r \'select(.line | startswith("{")) | .line | fromjson | .log\''
+        'logcli --addr="http://loki.experiment-sphenix.svc.cluster.local:3100" query '
+        '\'{job="django"}\' --limit=20 --output jsonl | jq -r \'.line\''
     )
     logger.info(f"Executing logcli command: {cmd}")
     try:
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True, check=True)
-        log_lines = result.stdout.strip().split('\n')
-        return [line for line in log_lines if line]
+        log_lines = [line for line in result.stdout.strip().split('\n') if line]
+        logger.info(f"Retrieved {len(log_lines)} log lines from Loki")
+        logger.debug(f"First 3 raw lines from Loki: {log_lines[:3]}")  # <--
+        return log_lines
     except subprocess.CalledProcessError as e:
         logger.error(f"Error querying Loki: {e.stderr}")
         return []
 
 def preprocess_log_line(log_line):
-    """Remove timestamp prefix from log line."""
-    return re.sub(TIMESTAMP_REGEX, '', log_line).strip()
+    """Remove gunicorn timestamp and normalize the log line for Drain3."""
+    cleaned = re.sub(TIMESTAMP_REGEX, '', log_line).strip()
+    logger.debug(f"  before: {repr(log_line)}")    # <--
+    logger.debug(f"  after:  {repr(cleaned)}")     # <--
+    return cleaned
 
 def process_with_drain3(log_lines):
-    """Process logs with Drain3, extract cluster IDs, and send them to Redis in batches."""
+    """Process logs with Drain3, extract cluster IDs, and send to Redis in batches."""
     persistence = FilePersistence(DRAIN3_PERSISTENCE_FILE)
     config = TemplateMinerConfig()
     config.load(DRAIN3_CONFIG_FILE)
     template_miner = TemplateMiner(persistence, config)
-
-    logger.info(f"Drain3 started with 'FILE' persistence")
+    logger.info("Drain3 started with 'FILE' persistence")
 
     batch = []
     batch_size = 20
-    for log_entry in log_lines:
-        try:
-            obj = json.loads(log_entry)
-            raw = obj.get("line", "")
-            
-            try:
-                inner = json.loads(raw)
-                raw_log_line = inner.get("log", raw)
-            except:
-                raw_log_line = raw
+    parse_ok = 0    # <--
+    parse_skip = 0  # <--
 
-        except:
-            raw_log_line = log_entry
-
-        cleaned_log_line = preprocess_log_line(raw_log_line)
-        
-        if not cleaned_log_line:
-            logger.warning(f"Skipping empty log line after preprocessing: {log_line}")
+    for log_line in log_lines:
+        cleaned = preprocess_log_line(log_line)
+        if not cleaned:
+            logger.warning(f"Skipping empty line after preprocessing: {repr(log_line)}")
+            parse_skip += 1  # <--
             continue
 
-        result = template_miner.add_log_message(cleaned_log_line)
+        result = template_miner.add_log_message(cleaned)
         if result is None:
+            logger.warning(f"Drain3 returned None for: {repr(cleaned)}")  # <--
+            parse_skip += 1                                                # <--
             continue
 
+        parse_ok += 1  # <--
         cluster_id = result["cluster_id"]
-        logger.info(f"Cluster ID: {cluster_id}")
+        logger.info(f"Cluster ID: {cluster_id} | Template: {result['template_mined']}")
+
+        params = template_miner.extract_parameters(result["template_mined"], cleaned)
+        logger.info(f"Parameters: {params}")
 
         batch.append(cluster_id)
-
-        # If batch reaches 20, push to Redis
         if len(batch) >= batch_size:
             push_sequence(batch)
             logger.info(f"Pushed batch to Redis: {batch}")
-            batch = [] 
+            batch = []
 
-        params = template_miner.extract_parameters(result["template_mined"], cleaned_log_line)
-        logger.info(f"Parameters: {params}")
+    # <--
+    logger.info(f"Parsing summary: {parse_ok} processed, {parse_skip} skipped out of {len(log_lines)} total")
 
-    # Push any remaining cluster IDs
     if batch:
         push_sequence(batch)
         logger.info(f"Pushed final batch to Redis: {batch}")
@@ -104,4 +96,3 @@ if __name__ == "__main__":
         process_with_drain3(log_lines)
     else:
         logger.info("No logs retrieved from Loki")
-

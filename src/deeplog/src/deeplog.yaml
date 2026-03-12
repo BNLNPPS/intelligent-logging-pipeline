@@ -23,7 +23,7 @@ spec:
         - containerPort: 8000
         env:
         - name: REDIS_HOST
-          value: "redis.drain3.svc.cluster.local"
+          value: "redis.experiment-sphenix.svc.cluster.local"
         - name: k_top
           value: "8"
         command: ["python"]                # override CMD
